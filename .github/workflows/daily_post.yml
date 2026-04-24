@@ -9,20 +9,27 @@ on:
 jobs:
   post:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
       - name: リポジトリをチェックアウト
         uses: actions/checkout@v4
 
-      - name: Python セットアップ
-        uses: actions/setup-python@v5
+      - name: Node.js セットアップ
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Claude Code CLI をインストール
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: uv セットアップ
+        uses: astral-sh/setup-uv@v5
         with:
           python-version: "3.11"
 
       - name: 依存パッケージをインストール
-        run: |
-          pip install anthropic requests requests-oauthlib pytest
+        run: uv sync
 
       - name: X に投稿
         env:
@@ -32,7 +39,7 @@ jobs:
           X_ACCESS_TOKEN:    ${{ secrets.X_ACCESS_TOKEN }}
           X_ACCESS_SECRET:   ${{ secrets.X_ACCESS_SECRET }}
         run: |
-          python scripts/generate_and_post.py
+          uv run python scripts/generate_and_post.py
 
       - name: 投稿データをコミット
         run: |
