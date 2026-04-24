@@ -1,8 +1,8 @@
 name: 毎日X投稿エージェント
 
 on:
-  schedule:
-    - cron: "0 23 * * *"
+  # schedule:
+  #   - cron: "0 23 * * *"
   workflow_dispatch:
     # 手動実行ボタンも有効にする（テスト用）
 
