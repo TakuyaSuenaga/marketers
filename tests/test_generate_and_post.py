@@ -121,3 +121,76 @@ async def test_log_cost_returns_empty_dict(capsys):
     captured = capsys.readouterr()
     assert result == {}
     assert "COST" in captured.out or captured.out == ""
+
+
+# ── build_prompt ─────────────────────────────────────────────
+from scripts.generate_and_post import build_prompt
+
+
+def test_build_prompt_contains_theme_data():
+    theme = {"theme": "会計事務所", "example": "freee入力", "pain": "繰り返し作業"}
+    prompt = build_prompt(theme)
+    assert "会計事務所" in prompt
+    assert "freee入力" in prompt
+    assert "繰り返し作業" in prompt
+
+
+def test_build_prompt_mentions_both_agents():
+    theme = {"theme": "t", "example": "e", "pain": "p"}
+    prompt = build_prompt(theme)
+    assert "hook_writer" in prompt
+    assert "post_writer" in prompt
+
+
+# ── run_generation ────────────────────────────────────────────
+from scripts.generate_and_post import run_generation
+from unittest.mock import patch
+from claude_agent_sdk import ResultMessage
+
+
+async def test_run_generation_returns_structured_output():
+    theme = {"theme": "テスト", "example": "例", "pain": "痛み"}
+    mock_result = ResultMessage(
+        subtype="success",
+        duration_ms=1000,
+        duration_api_ms=900,
+        is_error=False,
+        num_turns=2,
+        session_id="test-session",
+        total_cost_usd=0.001,
+        structured_output={
+            "hooks": ["h1", "h2", "h3"],
+            "selected_hook": "h1",
+            "post": "a" * 115 + " #自動化",
+        },
+    )
+
+    async def fake_query(**kwargs):
+        yield mock_result
+
+    with patch("scripts.generate_and_post.query", new=fake_query):
+        output = await run_generation(theme)
+
+    assert output["post"] == "a" * 115 + " #自動化"
+    assert output["hooks"] == ["h1", "h2", "h3"]
+    assert output["selected_hook"] == "h1"
+
+
+async def test_run_generation_raises_on_no_output():
+    theme = {"theme": "テスト", "example": "例", "pain": "痛み"}
+    mock_result = ResultMessage(
+        subtype="success",
+        duration_ms=1000,
+        duration_api_ms=900,
+        is_error=False,
+        num_turns=1,
+        session_id="test-session",
+        structured_output=None,
+    )
+
+    async def fake_query(**kwargs):
+        yield mock_result
+
+    with patch("scripts.generate_and_post.query", new=fake_query):
+        with pytest.raises(ValueError, match="生成結果が取得できませんでした"):
+            await run_generation(theme)
