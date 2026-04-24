@@ -1,9 +1,8 @@
 name: 毎日X投稿エージェント
 
 on:
-  # schedule:
-  #   # 毎朝8時（JST）= UTC 23時 に実行
-  #   - cron: "0 23 * * *"
+  schedule:
+    - cron: "0 23 * * *"
   workflow_dispatch:
     # 手動実行ボタンも有効にする（テスト用）
 
@@ -23,7 +22,7 @@ jobs:
 
       - name: 依存パッケージをインストール
         run: |
-          pip install anthropic requests requests-oauthlib
+          pip install anthropic requests requests-oauthlib pytest
 
       - name: X に投稿
         env:
@@ -34,3 +33,11 @@ jobs:
           X_ACCESS_SECRET:   ${{ secrets.X_ACCESS_SECRET }}
         run: |
           python scripts/generate_and_post.py
+
+      - name: 投稿データをコミット
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/posted_tweets.json || true
+          git diff --staged --quiet || git commit -m "chore: record posted tweet $(date +%Y-%m-%d)"
+          git push
