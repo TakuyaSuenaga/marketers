@@ -1,0 +1,36 @@
+name: 毎日X投稿エージェント
+
+on:
+  # schedule:
+  #   # 毎朝8時（JST）= UTC 23時 に実行
+  #   - cron: "0 23 * * *"
+  workflow_dispatch:
+    # 手動実行ボタンも有効にする（テスト用）
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@v4
+
+      - name: Python セットアップ
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 依存パッケージをインストール
+        run: |
+          pip install anthropic requests requests-oauthlib
+
+      - name: X に投稿
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          X_API_KEY:         ${{ secrets.X_API_KEY }}
+          X_API_SECRET:      ${{ secrets.X_API_SECRET }}
+          X_ACCESS_TOKEN:    ${{ secrets.X_ACCESS_TOKEN }}
+          X_ACCESS_SECRET:   ${{ secrets.X_ACCESS_SECRET }}
+        run: |
+          python scripts/generate_and_post.py
