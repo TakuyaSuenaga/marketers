@@ -2,8 +2,13 @@ import os
 import json
 import random
 import requests
+from datetime import datetime, timezone
+from pathlib import Path
 from anthropic import Anthropic
 from requests_oauthlib import OAuth1
+from scripts.data_store import append_unique
+
+POSTED_TWEETS_PATH = Path("data/posted_tweets.json")
 
 # ── 設定 ────────────────────────────────────────────────
 ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"]
@@ -194,6 +199,17 @@ def main():
         "char_count": len(post_text),
     }
     print(json.dumps(output, ensure_ascii=False, indent=2))
+
+    # 6. ツイートIDをデータファイルへ永続化
+    record = {
+        "tweet_id": tweet_id,
+        "theme": theme["theme"],
+        "post": post_text,
+        "hooks": hooks,
+        "posted_at": datetime.now(timezone.utc).isoformat(),
+    }
+    append_unique(POSTED_TWEETS_PATH, record, key="tweet_id")
+    print(f"ツイートID保存完了: {POSTED_TWEETS_PATH}")
 
 
 if __name__ == "__main__":
