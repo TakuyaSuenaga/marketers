@@ -40,13 +40,20 @@ def fetch_reply_users(tweet_id: str) -> list[dict]:
     response = requests.get(url, auth=_auth(), params=params)
     response.raise_for_status()
 
-    raw_users = response.json().get("data", [])
+    body = response.json()
+    tweets_data = body.get("data", [])
+    users_index = {
+        u["id"]: u["username"]
+        for u in body.get("includes", {}).get("users", [])
+    }
+
     seen: set[str] = set()
     unique_users: list[dict] = []
-    for u in raw_users:
-        if u["author_id"] not in seen:
-            seen.add(u["author_id"])
-            unique_users.append({"id": u["author_id"], "username": u.get("author_username", "")})
+    for t in tweets_data:
+        author_id = t["author_id"]
+        if author_id not in seen:
+            seen.add(author_id)
+            unique_users.append({"id": author_id, "username": users_index.get(author_id, "")})
     return unique_users
 
 
@@ -90,18 +97,22 @@ def main():
         tweet_id = tweet["tweet_id"]
         print(f"監視中: {tweet_id} ({tweet['theme']})")
 
-        candidates = collect_reactions(tweet)
+        try:
+            candidates = collect_reactions(tweet)
+        except requests.HTTPError as e:
+            print(f"  エラー (スキップ): {e}")
+            continue
+        prev_len = len(load_json(CUSTOMER_CANDIDATES_PATH))
         for candidate in candidates:
             candidate_with_id = {
                 **candidate,
                 "id": f"{candidate['user_id']}_{candidate['tweet_id']}",
             }
-            before = len(load_json(CUSTOMER_CANDIDATES_PATH))
-            append_unique(CUSTOMER_CANDIDATES_PATH, candidate_with_id, key="id")
-            after = len(load_json(CUSTOMER_CANDIDATES_PATH))
-            if after > before:
+            result = append_unique(CUSTOMER_CANDIDATES_PATH, candidate_with_id, key="id")
+            if len(result) > prev_len:
                 new_candidates_count += 1
                 print(f"  新規候補: @{candidate['username']} ({candidate['reaction_type']})")
+                prev_len = len(result)
 
     print(f"\n完了: 新規顧客候補 {new_candidates_count} 件追加")
     print(f"累計: {len(load_json(CUSTOMER_CANDIDATES_PATH))} 件")
