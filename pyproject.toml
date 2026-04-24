@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Add your description here"
 requires-python = ">=3.12"
 dependencies = [
+    "anthropic>=0.97.0",
     "claude-agent-sdk>=0.1.66",
     "requests>=2.33.1",
     "requests-oauthlib>=2.0.0",

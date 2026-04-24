@@ -212,5 +212,53 @@ def main():
     print(f"ツイートID保存完了: {POSTED_TWEETS_PATH}")
 
 
+# ── フック関数 ────────────────────────────────────────────────
+from typing import Any
+
+
+async def log_agent_start(
+    input_data: dict[str, Any], tool_use_id: str | None, context: dict
+) -> dict[str, Any]:
+    agent = input_data["tool_input"].get("subagent_type", "unknown")
+    print(f"[AGENT START] {agent} ({datetime.now().isoformat()})")
+    return {}
+
+
+async def log_and_validate(
+    input_data: dict[str, Any], tool_use_id: str | None, context: dict
+) -> dict[str, Any]:
+    agent = input_data["tool_input"].get("subagent_type", "unknown")
+    response = input_data.get("tool_response", {})
+    result_text = (
+        response.get("result", str(response)) if isinstance(response, dict) else str(response)
+    )
+    print(f"[AGENT END] {agent}: {result_text[:80]}")
+
+    if agent != "post_writer":
+        return {}
+
+    char_count = len(result_text)
+    hashtag_count = result_text.count("#")
+    if 120 <= char_count <= 140 and 1 <= hashtag_count <= 2:
+        return {}
+
+    return {
+        "hookSpecificOutput": {
+            "hookEventName": "PostToolUse",
+            "additionalContext": (
+                f"投稿が条件を満たしていません（{char_count}文字、ハッシュタグ{hashtag_count}個）。"
+                "120〜140文字、ハッシュタグ1〜2個で再生成してください。"
+            ),
+        }
+    }
+
+
+async def log_cost(
+    input_data: dict[str, Any], tool_use_id: str | None, context: dict
+) -> dict[str, Any]:
+    print("[COST] セッション終了")
+    return {}
+
+
 if __name__ == "__main__":
     main()
