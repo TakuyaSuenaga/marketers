@@ -24,6 +24,7 @@ def test_append_unique_adds_new_item(tmp_json):
     save_json(tmp_json, [{"id": "1"}])
     result = append_unique(tmp_json, {"id": "2"}, key="id")
     assert len(result) == 2
+    assert load_json(tmp_json) == result
 
 
 def test_append_unique_skips_duplicate(tmp_json):
